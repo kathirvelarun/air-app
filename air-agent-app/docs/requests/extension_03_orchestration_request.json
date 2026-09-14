@@ -1,0 +1,14 @@
+{
+  "incident": {
+    "incident_id": "8e9c44cd-43ef-4a8e-ae4e-06b05714ca09",
+    "title": "Payment errors spiking",
+    "description": "payment-service error rate elevated in production",
+    "severity": "HIGH",
+    "detected_at": "2026-08-29T14:20:00Z",
+    "service_name": "payment-service",
+    "environment": "production"
+  },
+  "repository": "org/air-services",
+  "start_time": "2026-08-29T14:00:00Z",
+  "end_time": "2026-08-29T16:00:00Z"
+}

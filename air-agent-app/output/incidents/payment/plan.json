@@ -1,0 +1,40 @@
+{
+  "planner_version": "1.0",
+  "status": "READY",
+  "confidence": 0.85,
+  "investigation_type": "Application",
+  "priority": "High",
+  "parallel_agents": [
+    "DeploymentAgent",
+    "LogsAgent",
+    "MetricsAgent"
+  ],
+  "required_evidence": [
+    "Inspect recent payment configuration changes",
+    "Collect payment errors and dependency traces",
+    "Collect connection latency, health and APM metrics"
+  ],
+  "evidence_requests": [
+    {
+      "agent_name": "DeploymentAgent",
+      "evidence_type": "deployment_changes",
+      "description": "Inspect recent payment configuration changes"
+    },
+    {
+      "agent_name": "LogsAgent",
+      "evidence_type": "application_logs",
+      "description": "Collect payment errors and dependency traces"
+    },
+    {
+      "agent_name": "MetricsAgent",
+      "evidence_type": "runtime_metrics",
+      "description": "Collect connection latency, health and APM metrics"
+    }
+  ],
+  "hypotheses": [
+    "Investigate intermittent payment failures"
+  ],
+  "missing_context": [],
+  "context_requests": [],
+  "reasoning": "OFFLINE FIXTURE: collect evidence without selecting a root cause."
+}

@@ -1,0 +1,100 @@
+{
+  "scenario_id": "payment",
+  "alert_source": "monitoring",
+  "question": "Collect source-linked evidence for intermittent payment-service failures.",
+  "reported_symptoms": "Monitoring reports intermittent payment failures and elevated latency from 14:00 UTC.",
+  "assumptions": [
+    "All observations and change times are mock data for this lesson."
+  ],
+  "observations": [
+    {
+      "evidence_id": "pay-config",
+      "source_id": "config",
+      "service": "payment-service",
+      "observed_at": "2026-09-13T13:55:00Z",
+      "statement": "v2.4.1 changed connection_timeout_ms from 300 to 30 at 13:55 UTC.",
+      "kind": "observation"
+    },
+    {
+      "evidence_id": "pay-errors",
+      "source_id": "logs",
+      "service": "payment-service",
+      "observed_at": "2026-09-13T14:00:00Z",
+      "statement": "Since 14:00 UTC, failing requests return 504 upstream_connect_timeout at connect_elapsed_ms=30.",
+      "kind": "observation"
+    },
+    {
+      "evidence_id": "pay-cache-negative",
+      "source_id": "trace",
+      "service": "payment-service",
+      "observed_at": "2026-09-13T14:00:00Z",
+      "statement": "Sampled failing payment traces time out on payment-processor connections and contain no cache call.",
+      "kind": "observation"
+    },
+    {
+      "evidence_id": "pay-latency",
+      "source_id": "network",
+      "service": "payment-processor",
+      "observed_at": "2026-09-13T14:00:00Z",
+      "statement": "Independent connection probes range from 12 to 42 ms; some exceed 30 ms but none exceed 300 ms.",
+      "kind": "observation"
+    },
+    {
+      "evidence_id": "pay-healthy",
+      "source_id": "health",
+      "service": "payment-service",
+      "observed_at": "2026-09-13T14:00:00Z",
+      "statement": "Database pool utilization is 40%; DNS and load-balancer checks pass.",
+      "kind": "observation"
+    },
+    {
+      "evidence_id": "pay-cache",
+      "source_id": "apm",
+      "service": "cache-service",
+      "observed_at": "2026-09-13T14:10:00Z",
+      "statement": "Cache memory is 91%; detector suggests a memory leak with 94% anomaly confidence; impact was not assessed.",
+      "kind": "detector_hypothesis"
+    }
+  ],
+  "root_cause_candidates": [
+    {
+      "candidate_id": "payment-timeout",
+      "candidate": "Connection timeout regression after deployment",
+      "supporting_evidence": [
+        "pay-config",
+        "pay-errors",
+        "pay-latency"
+      ],
+      "contradicting_evidence": []
+    },
+    {
+      "candidate_id": "cache-memory",
+      "candidate": "Possible cache memory leak impacting payments",
+      "supporting_evidence": [
+        "pay-cache"
+      ],
+      "contradicting_evidence": [
+        "pay-cache-negative"
+      ]
+    }
+  ],
+  "checks_completed": [
+    {
+      "check": "Trace dependency path",
+      "evidence_ids": [
+        "pay-cache-negative"
+      ]
+    },
+    {
+      "check": "Database, DNS and load-balancer health",
+      "evidence_ids": [
+        "pay-healthy"
+      ]
+    }
+  ],
+  "open_questions": [
+    "What is the relationship between connection failures and the configuration change?",
+    "Do unsampled payment paths depend on the cache?"
+  ],
+  "data_mode": "mock"
+}

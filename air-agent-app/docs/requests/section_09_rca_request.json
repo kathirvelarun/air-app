@@ -1,0 +1,192 @@
+{
+  "investigation_id": "8e9c44cd-43ef-4a8e-ae4e-06b05714ca09",
+  "evidence": [
+    {
+      "investigation_id": "8e9c44cd-43ef-4a8e-ae4e-06b05714ca09",
+      "agent_name": "LogsAgent",
+      "evidence_type": "LOG",
+      "source_system": "ELF",
+      "title": "5 log error event(s) observed",
+      "summary": "Observed 5 error events out of 1500 log events for payment-service in production; the most common is 'upstream_connect_timeout' (5 occurrences).",
+      "confidence": 0.9,
+      "findings": {
+        "total_events": 1500,
+        "error_count": 5,
+        "warning_count": 0,
+        "exceptions": {
+          "upstream_connect_timeout": 5
+        },
+        "affected_classes": [],
+        "affected_pods": [
+          "payment-service-0",
+          "payment-service-1"
+        ],
+        "http_statuses": {
+          "200": 1495,
+          "504": 5
+        },
+        "first_error_at": "2026-08-29T14:14:28+00:00",
+        "last_error_at": "2026-08-29T15:27:24+00:00"
+      },
+      "references": [],
+      "observed_from": "2026-08-29T14:00:00Z",
+      "observed_to": "2026-08-29T16:00:00Z",
+      "collected_at": "2026-09-14T08:23:41.718867Z"
+    },
+    {
+      "investigation_id": "8e9c44cd-43ef-4a8e-ae4e-06b05714ca09",
+      "agent_name": "MetricsAgent",
+      "evidence_type": "METRIC",
+      "source_system": "Prometheus",
+      "title": "2 metric(s) show unhealthy deviation from baseline",
+      "summary": "http_5xx_rate, p95_latency_ms deviated from baseline for payment-service in production; other requested metrics stayed normal.",
+      "confidence": 0.99,
+      "findings": {
+        "cpu_pct": {
+          "baseline_avg": 0.2798833333333333,
+          "current_avg": 0.3098719008264463,
+          "min": 0.2945,
+          "max": 0.3255,
+          "delta": 0.02998856749311296,
+          "percent_change": 10.714667120745416,
+          "sample_count": 121,
+          "health": "HEALTHY"
+        },
+        "memory_pct": {
+          "baseline_avg": 0.59975,
+          "current_avg": 0.6197438016528926,
+          "min": 0.589,
+          "max": 0.651,
+          "delta": 0.01999380165289255,
+          "percent_change": 3.3336893126957152,
+          "sample_count": 121,
+          "health": "HEALTHY"
+        },
+        "http_5xx_rate": {
+          "baseline_avg": 0.011995,
+          "current_avg": 0.18592314049586778,
+          "min": 0.1767,
+          "max": 0.1953,
+          "delta": 0.17392814049586777,
+          "percent_change": 1450.0053396904357,
+          "sample_count": 121,
+          "health": "UNHEALTHY"
+        },
+        "p95_latency_ms": {
+          "baseline_avg": 239.9,
+          "current_avg": 2798.8429752066118,
+          "min": 2660.0,
+          "max": 2940.0,
+          "delta": 2558.9429752066117,
+          "percent_change": 1066.6706857885,
+          "sample_count": 121,
+          "health": "UNHEALTHY"
+        }
+      },
+      "references": [],
+      "observed_from": "2026-08-29T14:00:00Z",
+      "observed_to": "2026-08-29T16:00:00Z",
+      "collected_at": "2026-09-14T08:23:41.720341Z"
+    },
+    {
+      "investigation_id": "8e9c44cd-43ef-4a8e-ae4e-06b05714ca09",
+      "agent_name": "TracesAgent",
+      "evidence_type": "TRACE",
+      "source_system": "Jaeger",
+      "title": "10 error span(s) observed",
+      "summary": "Observed 10 error spans and 10 spans over 1000ms for payment-service in production; concentrated in 'handle_payment'.",
+      "confidence": 0.9,
+      "findings": {
+        "total_spans": 3000,
+        "error_span_count": 10,
+        "slow_span_count": 10,
+        "operations": {
+          "handle_payment": {
+            "count": 1500,
+            "avg_duration_ms": 229.54666666666665,
+            "max_duration_ms": 30233.0,
+            "error_count": 5
+          },
+          "call_payment_processor": {
+            "count": 1500,
+            "avg_duration_ms": 194.51333333333332,
+            "max_duration_ms": 30142.0,
+            "error_count": 5
+          }
+        },
+        "primary_error_operation": "handle_payment",
+        "slowest_operation": "handle_payment",
+        "first_error_at": "2026-08-29T14:14:28+00:00",
+        "last_error_at": "2026-08-29T15:27:24+00:00"
+      },
+      "references": [],
+      "observed_from": "2026-08-29T14:00:00Z",
+      "observed_to": "2026-08-29T16:00:00Z",
+      "collected_at": "2026-09-14T08:23:41.732102Z"
+    },
+    {
+      "investigation_id": "8e9c44cd-43ef-4a8e-ae4e-06b05714ca09",
+      "agent_name": "DeploymentAgent",
+      "evidence_type": "DEPLOYMENT",
+      "source_system": "GitHub",
+      "title": "Deployment detected before incident",
+      "summary": "Version 2.4.1 was deployed 120 minutes before the incident.",
+      "confidence": 0.99,
+      "findings": {
+        "total_events": 2,
+        "deployment_detected": true,
+        "latest_deployment": {
+          "version": "2.4.1",
+          "commit_sha": "a1b2c3d",
+          "branch": "main",
+          "timestamp": "2026-08-29T14:00:00+00:00"
+        },
+        "minutes_before_incident": 120.0,
+        "commit_count": 1,
+        "commits": [
+          {
+            "commit_sha": "a1b2c3d",
+            "actor": "deploy-bot",
+            "timestamp": "2026-08-29T13:55:00+00:00"
+          }
+        ],
+        "rollback_detected": false,
+        "changed_files": [
+          "config/payment-service.yaml"
+        ]
+      },
+      "references": [],
+      "observed_from": "2026-08-29T14:00:00Z",
+      "observed_to": "2026-08-29T16:00:00Z",
+      "collected_at": "2026-09-14T08:23:41.732517Z"
+    }
+  ],
+  "missing_agents": [],
+  "duplicate_count": 0,
+  "timeline": [
+    {
+      "timestamp": "2026-08-29T14:00:00Z",
+      "agent_name": "MetricsAgent",
+      "evidence_type": "METRIC",
+      "title": "2 metric(s) show unhealthy deviation from baseline"
+    },
+    {
+      "timestamp": "2026-08-29T14:00:00Z",
+      "agent_name": "DeploymentAgent",
+      "evidence_type": "DEPLOYMENT",
+      "title": "Deployment detected before incident"
+    },
+    {
+      "timestamp": "2026-08-29T14:14:28Z",
+      "agent_name": "LogsAgent",
+      "evidence_type": "LOG",
+      "title": "5 log error event(s) observed"
+    },
+    {
+      "timestamp": "2026-08-29T14:14:28Z",
+      "agent_name": "TracesAgent",
+      "evidence_type": "TRACE",
+      "title": "10 error span(s) observed"
+    }
+  ]
+}

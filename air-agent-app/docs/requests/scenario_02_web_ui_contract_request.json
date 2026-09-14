@@ -1,0 +1,8 @@
+{
+  "investigation_id": "2b1c6a4e-9f3d-4c8a-8e2a-1a2b3c4d5e6f",
+  "service_name": "web-ui",
+  "environment": "production",
+  "repository": "org/air-services",
+  "start_time": "2026-08-29T14:00:00Z",
+  "end_time": "2026-08-29T16:00:00Z"
+}
