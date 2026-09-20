@@ -1,7 +1,10 @@
+import { readInvestigation, publishInvestigation, subscribeInvestigations } from './utils/investigationSync';
+import { fetchChannel, toScenario, type IntakeIncident } from './api/alertIntake';
+import { SlackChannelPage } from './pages/SlackChannelPage';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { useEffect, useRef, useState } from 'react';
 import { Button, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField, LinearProgress, MenuItem } from '@mui/material';
-import { ArrowForwardRounded, CheckRounded, BoltRounded, HubOutlined, NotificationsNoneRounded, ArrowOutwardRounded, CloseRounded, RestartAltRounded, ShieldOutlined, TimelineRounded, DescriptionOutlined, GraphicEqRounded } from '@mui/icons-material';
+import { ArrowForwardRounded, CheckRounded, BoltRounded, HubOutlined, NotificationsNoneRounded, ArrowOutwardRounded, CloseRounded, ShieldOutlined, TimelineRounded, DescriptionOutlined, GraphicEqRounded } from '@mui/icons-material';
 import './styles/base.css';
 import './styles/referenceTheme.css';
 import './styles/amexTheme.css';
@@ -13,7 +16,7 @@ import type { AirRole } from './utils/access';
 import { OperationsPage } from './pages/OperationsPage';
 import { LiveIncidentPage } from './pages/LiveIncidentPage';
 import { investigateIncident } from './api/investigationApi';
-import { liveScenarios, liveIncidentRow, liveAlertRow, formatElapsed } from './data/liveScenarios';
+import { liveIncidentRow, liveAlertRow, formatElapsed, formatUtc } from './data/liveScenarios';
 import type { InvestigationResponse, LiveStatus } from './types/investigation';
 
 const prototypeTheme = createTheme({ palette: { mode: 'light', primary: { main: '#006fcf' } }, typography: { fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', button: { textTransform: 'none' } } });
@@ -49,6 +52,13 @@ export default function App() {
     }
     return () => { lifecycle.abort(); document.title = previousTitle; };
   }, []);
+  const [route, setRoute] = useState(window.location.pathname);
+  useEffect(() => {
+    const sync = () => setRoute(window.location.pathname);
+    window.addEventListener('popstate', sync);
+    return () => window.removeEventListener('popstate', sync);
+  }, []);
+  const goTo = (path: string) => { window.history.pushState({}, '', path); setRoute(path); };
   const [role, setRole] = useState<AirRole>('SRE Engineer');
   const [systems, setSystems] = useState(defaultSystems);
   const [stage, setStage] = useState(0);
@@ -72,11 +82,37 @@ export default function App() {
   const [reviewed, setReviewed] = useState(false);
   const [note, setNote] = useState('');
   const advance = (n: number) => { setStage(n); setUnlocked(Math.max(unlocked, n)); setNav('Incidents'); };
-  const [liveStatus, setLiveStatus] = useState<Record<string, LiveStatus>>(() => Object.fromEntries(liveScenarios.map(s => [s.key, 'Acknowledged'])));
+  const [intake, setIntake] = useState<IntakeIncident[]>([]);
+  const [intakeError, setIntakeError] = useState('');
+  const liveScenarios = intake.map(toScenario);
+  useEffect(() => {
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    const refresh = async () => {
+      try { const items = await fetchChannel(controller.signal); setIntake(items); setIntakeError(''); }
+      catch (error) { if (!controller.signal.aborted) setIntakeError(error instanceof Error ? error.message : 'Unable to load alerts.'); }
+      if (!controller.signal.aborted) timer = setTimeout(refresh, 2000);
+    };
+    void refresh();
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, []);
+  const [liveStatus, setLiveStatus] = useState<Record<string, LiveStatus>>({});
   const [liveResults, setLiveResults] = useState<Record<string, InvestigationResponse>>({});
   const [liveErrors, setLiveErrors] = useState<Record<string, string>>({});
   const [liveTiming, setLiveTiming] = useState<Record<string, { startedAt: number; finishedAt?: number }>>({});
   const [openLiveKey, setOpenLiveKey] = useState<string | null>(null);
+  useEffect(() => {
+    const refresh = () => {
+      const snapshots = intake.map(i => ({ key: i.id, snapshot: readInvestigation(i.uuid) })).filter(i => i.snapshot);
+      setLiveStatus(Object.fromEntries(snapshots.map(({ key, snapshot }) => [key, snapshot!.status])));
+      setLiveResults(Object.fromEntries(snapshots.filter(i => i.snapshot!.result).map(({ key, snapshot }) => [key, snapshot!.result!])));
+      setLiveErrors(Object.fromEntries(snapshots.filter(i => i.snapshot!.error).map(({ key, snapshot }) => [key, snapshot!.error!])));
+      setLiveTiming(Object.fromEntries(snapshots.map(({ key, snapshot }) => [key, { startedAt: snapshot!.startedAt, finishedAt: snapshot!.finishedAt }])));
+    };
+    refresh();
+    return subscribeInvestigations(refresh);
+  }, [intake]);
+
   useEffect(() => {
     if (!Object.values(liveStatus).includes('Investigating')) return;
     const timer = window.setInterval(() => setLiveTiming(current => ({ ...current })), 1000);
@@ -85,46 +121,64 @@ export default function App() {
   const runInvestigation = async (key: string) => {
     const scenario = liveScenarios.find(s => s.key === key);
     if (!scenario) return;
-    setLiveStatus(current => ({ ...current, [key]: 'Investigating' }));
-    setLiveErrors(current => { const next = { ...current }; delete next[key]; return next; });
-    setLiveTiming(current => ({ ...current, [key]: { startedAt: Date.now() } }));
+    const uuid = scenario.request.incident.incident_id;
+    const startedAt = Date.now();
+    try {
+      publishInvestigation({ uuid, status: 'Investigating', startedAt });
+    } catch {
+      setLiveErrors(current => ({ ...current, [key]: 'Browser storage is unavailable. Enable site storage to synchronize investigation tabs.' }));
+      return;
+    }
     try {
       const result = await investigateIncident(scenario.request);
-      setLiveResults(current => ({ ...current, [key]: result }));
-      setLiveStatus(current => ({ ...current, [key]: 'Investigated' }));
-      setLiveTiming(current => ({ ...current, [key]: { startedAt: current[key]?.startedAt ?? Date.now(), finishedAt: Date.now() } }));
+      const status: LiveStatus = result.status === 'COMPLETED' ? 'Investigated' : result.status === 'INCONCLUSIVE' ? 'Inconclusive' : 'Failed';
+      publishInvestigation({ uuid, status, startedAt, finishedAt: Date.now(), result,
+        ...(status === 'Failed' ? { error: result.terminal_reason || result.status } : {}) });
     } catch (err) {
-      setLiveStatus(current => ({ ...current, [key]: 'Failed' }));
-      setLiveErrors(current => ({ ...current, [key]: err instanceof Error ? err.message : 'Investigation request failed.' }));
-      setLiveTiming(current => ({ ...current, [key]: { startedAt: current[key]?.startedAt ?? Date.now(), finishedAt: Date.now() } }));
+      const error = err instanceof Error ? err.message : 'Investigation request failed.';
+      try { publishInvestigation({ uuid, status: 'Failed', startedAt, finishedAt: Date.now(), error }); }
+      catch { setLiveErrors(current => ({ ...current, [key]: error + ' Unable to save the update to browser storage.' })); }
     }
   };
   const openLiveIncident = (key: string) => {
     setDetail(false);
     setNav('Incidents');
     setOpenLiveKey(key);
-    if (liveStatus[key] === 'Acknowledged') void runInvestigation(key);
+    goTo(`/incidents/${key}/investigation`);
   };
   const liveDuration = (key: string): string => {
     const timing = liveTiming[key];
     if (!timing) return '—';
     return formatElapsed((timing.finishedAt ?? Date.now()) - timing.startedAt);
   };
-  const liveIncidentRows = liveScenarios.map(s => liveIncidentRow(s, liveStatus[s.key], liveDuration(s.key)));
-  const liveAlertRows = liveScenarios.map(s => liveAlertRow(s, liveStatus[s.key]));
+  const liveIncidentRows = liveScenarios.map(s => liveIncidentRow(s, liveStatus[s.key] ?? 'Open', liveDuration(s.key)));
+  const liveAlertRows = liveScenarios.map(s => {
+    const row = liveAlertRow(s, liveStatus[s.key] ?? 'Open');
+    const incident = intake.find(i => i.id === s.key)!;
+    row.environment = incident.environment;
+    row.occurrences = incident.alerts.map(a => ({ ...row, eventId: `${a.source}:${a.eventId}`, source: a.source, title: a.summary, environment: a.environment, observedAt: formatUtc(a.observedAt) }));
+    return row;
+  });
   const openLiveScenario = liveScenarios.find(s => s.key === openLiveKey) ?? null;
+  useEffect(() => {
+    const match = /^\/incidents\/(INC-\d+)\/investigation$/.exec(route);
+    if (match) { setOpenLiveKey(match[1]); setDetail(false); setNav('Incidents'); }
+    else setOpenLiveKey(null);
+  }, [route]);
+  if (route === '/slack') return <SlackChannelPage incidents={intake} loadError={intakeError} statuses={liveStatus} results={liveResults} errors={liveErrors} onPortal={() => goTo('/')} />;
   return <ThemeProvider theme={prototypeTheme}><div className="air-prototype">
     <aside className="air-sidebar">
       <a className="air-brand" href="/prototype"><span className="air-brand-icon"><GraphicEqRounded /></span> AIR<span className="air-brand-dot">●</span></a>
       <div className="air-workspace"><span className="air-avatar">N</span><div>Northstar<span>Production workspace</span></div><span>⌄</span></div>
       <span className="air-eyebrow nav-label">WORKSPACE</span>
-      <nav>{[{ label: 'Overview', icon: <HubOutlined /> }, { label: 'Alerts', icon: <NotificationsNoneRounded /> }, { label: 'Incidents', icon: <BoltRounded /> }, { label: 'Post-mortems', icon: <DescriptionOutlined /> }, ...(canManage(role) ? [{label:'Analytics',icon:<TimelineRounded/>},{label:'System configuration',icon:<ShieldOutlined/>}] : [])].map(item => <button key={item.label} className={nav === item.label ? 'active' : ''} onClick={() => { setNav(item.label); setDetail(false); setOpenLiveKey(null); }} >{item.icon}{item.label}{item.label === 'Incidents' && <span className="nav-count">{1 + liveIncidentRows.length}</span>}</button>)}</nav>
+      <nav><button onClick={() => goTo('/slack')}><NotificationsNoneRounded />Slack channel</button>{[{ label: 'Overview', icon: <HubOutlined /> }, { label: 'Alerts', icon: <NotificationsNoneRounded /> }, { label: 'Incidents', icon: <BoltRounded /> }, { label: 'Post-mortems', icon: <DescriptionOutlined /> }, ...(canManage(role) ? [{label:'Analytics',icon:<TimelineRounded/>},{label:'System configuration',icon:<ShieldOutlined/>}] : [])].map(item => <button key={item.label} className={nav === item.label ? 'active' : ''} onClick={() => { goTo('/'); setNav(item.label); setDetail(false); setOpenLiveKey(null); }} >{item.icon}{item.label}{item.label === 'Incidents' && <span className="nav-count">{liveIncidentRows.length}</span>}</button>)}</nav>
       <div className="air-sidebar-bottom"><div className="air-agent-health"><span className="green-dot" /> Agent systems operational<span>4 evidence sources connected</span></div><div className="air-profile"><span className="air-avatar">SC</span><div>Sam Chen<span>{role}</span></div></div></div>
     </aside>
     <div className="air-workarea">
-      <header className="air-topbar"><div>Workspace <span>/</span> <strong>{nav}</strong></div><div className="air-top-actions"><TextField select size="small" label="Demo role" className="air-role-switch" value={role} onChange={e=>{const next=e.target.value as AirRole;setRole(next);if(!canManage(next)&&['Analytics','System configuration'].includes(nav)){setNav('Overview');setDetail(false);}setApprovalOpen(false);}}>{(['SRE Engineer','Incident Commander'] as const).map(r=><MenuItem key={r} value={r}>{r}</MenuItem>)}</TextField><Chip label="Demo workspace" size="small" variant="outlined" /><Button size="small" startIcon={<RestartAltRounded />} onClick={() => { setStage(0); setUnlocked(0); setAnalysisStep(0); setApproved(false); setRecovered(false); setReviewed(false); setReason(''); setDetail(true); setNav('Incidents'); setOpenLiveKey(null); setNote('Demo reset. Start with the investigation.'); }}>Reset demo</Button><span className="air-avatar small">SC</span></div></header>
+      <header className="air-topbar"><div>Workspace <span>/</span> <strong>{nav}</strong></div><div className="air-top-actions"><TextField select size="small" label="Demo role" className="air-role-switch" value={role} onChange={e=>{const next=e.target.value as AirRole;setRole(next);if(!canManage(next)&&['Analytics','System configuration'].includes(nav)){setNav('Overview');setDetail(false);}setApprovalOpen(false);}}>{(['SRE Engineer','Incident Commander'] as const).map(r=><MenuItem key={r} value={r}>{r}</MenuItem>)}</TextField><Chip label="Demo workspace" size="small" variant="outlined" /><span className="air-avatar small">SC</span></div></header>
       <main>
-        {openLiveScenario ? <LiveIncidentPage key={openLiveScenario.key} scenario={openLiveScenario} status={liveStatus[openLiveScenario.key]} result={liveResults[openLiveScenario.key]} error={liveErrors[openLiveScenario.key]} onBack={() => setOpenLiveKey(null)} onRun={() => runInvestigation(openLiveScenario.key)} /> : !detail && nav==='Analytics' && canManage(role) ? <LeadershipPage recovered={recovered} systems={systems}/> : !detail && nav==='System configuration' ? <CommanderPage key={nav+role} role={role} page={nav} recovered={recovered} systems={systems} onSave={config=>{if(canManage(role))setSystems(current=>current.some(s=>s.id===config.id)?current.map(s=>s.id===config.id?config:s):[...current,config]);}} /> : !detail ? <OperationsPage key={nav} page={nav} recovered={recovered} reviewed={reviewed} openIncident={n=>{if(n===0&&!recovered)setAnalysisStep(0);setStage(n);setNav('Incidents');setDetail(true);}} liveIncidentRows={liveIncidentRows} liveAlertRows={liveAlertRows} onOpenLive={openLiveIncident} /> : analysisStep < 4 ? <div className="air-investigation-wait" aria-hidden="true" /> : <>
+        {intakeError && <p role="alert">{intakeError}</p>}
+        {openLiveScenario ? <LiveIncidentPage key={openLiveScenario.key} scenario={openLiveScenario} status={liveStatus[openLiveScenario.key] ?? 'Open'} result={liveResults[openLiveScenario.key]} error={liveErrors[openLiveScenario.key]} onBack={() => { goTo('/'); setOpenLiveKey(null); }} onRun={() => runInvestigation(openLiveScenario.key)} /> : !detail && nav==='Analytics' && canManage(role) ? <LeadershipPage recovered={recovered} systems={systems}/> : !detail && nav==='System configuration' ? <CommanderPage key={nav+role} role={role} page={nav} recovered={recovered} systems={systems} onSave={config=>{if(canManage(role))setSystems(current=>current.some(s=>s.id===config.id)?current.map(s=>s.id===config.id?config:s):[...current,config]);}} /> : !detail ? <OperationsPage key={nav} page={nav} recovered={recovered} reviewed={reviewed} openIncident={n=>{if(n===0&&!recovered)setAnalysisStep(0);setStage(n);setNav('Incidents');setDetail(true);}} liveIncidentRows={liveIncidentRows} liveAlertRows={liveAlertRows} onOpenLive={openLiveIncident} /> : analysisStep < 4 ? <div className="air-investigation-wait" aria-hidden="true" /> : <>
         <div className="air-breadcrumb"><button onClick={()=>setDetail(false)}>← All incidents</button> <span>/</span> INC-2048 <span className="air-demo-label">SIMULATED SCENARIO</span></div>
         <div className="air-page-heading"><div><div className="air-title-line"><span className="air-severity">SEV 1</span><span className="air-status"><span className="green-dot" />{recovered ? 'Resolved · recovery verified' : 'In progress · investigating'}</span><span className="air-secondary">Opened Sep 7, 09:43 UTC</span></div><h1 ref={incidentHeading} tabIndex={-1}>Elevated error rate on checkout-api</h1><p>Checkout failures are affecting customers in us-east-1.</p></div><div className="air-owner"><span className="air-avatar">SC</span><div><span>COMMANDER</span>Sam Chen</div></div></div>
         <div className="air-metadata"><span><i /> checkout-api</span><span>Production</span><span>us-east-1</span><span>4 alert groups · 8 occurrences</span><span>Payments platform</span><span>#air-inc-2048 · Slack ready (demo)</span></div>

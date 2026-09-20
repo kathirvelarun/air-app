@@ -87,7 +87,7 @@ export type InvestigationResponse = {
   rca: RcaSection;
 };
 
-export type LiveStatus = 'Acknowledged' | 'Investigating' | 'Investigated' | 'Failed';
+export type LiveStatus = 'Inconclusive' | 'Open' | 'Acknowledged' | 'Investigating' | 'Investigated' | 'Failed';
 
 export type LiveScenario = {
   key: string;

@@ -213,7 +213,7 @@ export function LiveIncidentPage({ scenario, status, result, error, onBack, onRu
     </div>
     <div className="air-metadata"><span><i /> {incident.service_name}</span><span>{environment}</span><span>{scenario.request.repository}</span><span>Window {formatUtc(scenario.request.start_time)} – {formatUtc(scenario.request.end_time)}</span><span>#{scenario.slackChannel}</span></div>
 
-    {status === 'Acknowledged' && !ready && <div className="air-card">
+    {(status === 'Open' || status === 'Acknowledged') && !ready && <div className="air-card">
       <h3>Investigation not started</h3>
       <p>Planning, evidence collection, root cause analysis, and suggestions run server-side in a single request. This can take up to a minute.</p>
       <Button variant="contained" onClick={onRun}>Start investigation</Button>

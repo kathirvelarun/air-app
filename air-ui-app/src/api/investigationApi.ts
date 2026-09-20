@@ -1,6 +1,6 @@
 import type { InvestigateRequest, InvestigationResponse } from '../types/investigation';
 
-export const INVESTIGATE_URL = 'http://127.0.0.1:8000/api/v1/incidents/investigate';
+export const INVESTIGATE_URL = import.meta.env.VITE_INVESTIGATE_URL || '/api/v1/incidents/investigate';
 
 export async function investigateIncident(request: InvestigateRequest, signal?: AbortSignal): Promise<InvestigationResponse> {
   let response: Response;
