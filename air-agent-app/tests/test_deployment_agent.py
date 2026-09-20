@@ -158,3 +158,36 @@ async def test_deployment_agent_finds_the_notebooks_deployment_via_offline_tool(
     assert result.findings["latest_deployment"]["version"] == "2.4.1"
     assert result.findings["minutes_before_incident"] == 120.0
     assert result.findings["rollback_detected"] is False
+
+
+@pytest.mark.anyio
+async def test_payment_production_returns_deployment_evidence() -> None:
+    """The production environment retains the payment fixture's change evidence."""
+    agent = DeploymentAgent(OfflineDeploymentTool())
+    evidence = await agent.execute(make_request(environment="production"))
+    assert len(evidence) == 1
+    latest = evidence[0].findings["latest_deployment"]
+    assert latest["version"] == "2.4.1"
+    lines = generate_deployment_events(
+        "org/air-services", "payment-service", "production", START, START + timedelta(hours=2)
+    )
+    assert all("environment=production" in line for line in lines)
+    assert "config/payment-service.yaml" in evidence[0].findings["changed_files"]
+
+
+def test_production_does_not_invent_deployments_for_other_services_or_windows() -> None:
+    """Production fixtures preserve service and query-window boundaries."""
+    for service in ("ledger-service", "unknown-service"):
+        assert generate_deployment_events(
+            "org/air-services", service, "production", START, START + timedelta(hours=2)
+        ) == []
+    assert generate_deployment_events(
+        "org/air-services", "payment-service", "production", START, START + timedelta(hours=1)
+    ) == []
+
+
+def test_demo_environment_has_no_deployment_fixture() -> None:
+    """Deployment evidence is modeled only for production."""
+    assert generate_deployment_events(
+        "org/air-services", "payment-service", "demo", START, START + timedelta(hours=2)
+    ) == []

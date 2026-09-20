@@ -1,0 +1,122 @@
+{
+  "info": {
+    "name": "AIR \u2014 ELF, UI, Grafana Alert Intake",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8001"
+    }
+  ],
+  "item": [
+    {
+      "name": "ELF \u2014 Payment errors spiking",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/alerts",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"eventId\": \"elf-payment-prod-001\",\n  \"source\": \"ELF\",\n  \"service\": \"payment-service\",\n  \"environment\": \"production\",\n  \"rule\": \"payment-error-rate\",\n  \"severity\": \"HIGH\",\n  \"summary\": \"Payment errors spiking\",\n  \"description\": \"ELF detected repeated payment request errors above the demo threshold.\",\n  \"observedAt\": \"2026-08-29T14:20:00Z\",\n  \"owner\": \"SRE on-call\",\n  \"repository\": \"org/air-services\",\n  \"requiredMetrics\": [],\n  \"simulated\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Alert accepted\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+              "const result = pm.response.json();",
+              "pm.test(\"Incident returned\", () => pm.expect(result.incident.id).to.match(/^INC-/));",
+              "pm.collectionVariables.set(\"lastIncidentId\", result.incident.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "UI \u2014 Checkout page failing to load order details",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/alerts",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"eventId\": \"ui-checkout-prod-001\",\n  \"source\": \"UI\",\n  \"service\": \"web-ui\",\n  \"environment\": \"production\",\n  \"rule\": \"checkout-response-parse\",\n  \"severity\": \"HIGH\",\n  \"summary\": \"Checkout page failing to load order details\",\n  \"description\": \"Front-end response parsing errors prevent checkout from rendering order details.\",\n  \"observedAt\": \"2026-08-29T14:20:00Z\",\n  \"owner\": \"SRE on-call\",\n  \"repository\": \"org/air-services\",\n  \"requiredMetrics\": [],\n  \"simulated\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Alert accepted\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+              "const result = pm.response.json();",
+              "pm.test(\"Incident returned\", () => pm.expect(result.incident.id).to.match(/^INC-/));",
+              "pm.collectionVariables.set(\"lastIncidentId\", result.incident.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Grafana \u2014 Ledger writes failing",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/alerts",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"eventId\": \"grafana-disk-prod-001\",\n  \"source\": \"Grafana\",\n  \"service\": \"ledger-service\",\n  \"environment\": \"production\",\n  \"rule\": \"ledger-disk-usage\",\n  \"severity\": \"CRITICAL\",\n  \"summary\": \"Ledger writes failing\",\n  \"description\": \"Grafana disk usage alert: ledger filesystem utilization exceeded the demo threshold.\",\n  \"observedAt\": \"2026-08-29T14:20:00Z\",\n  \"owner\": \"SRE on-call\",\n  \"repository\": \"org/air-services\",\n  \"requiredMetrics\": [\n    \"cpu_pct\",\n    \"memory_pct\",\n    \"http_5xx_rate\",\n    \"p95_latency_ms\",\n    \"disk_usage_pct\"\n  ],\n  \"simulated\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Alert accepted\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+              "const result = pm.response.json();",
+              "pm.test(\"Incident returned\", () => pm.expect(result.incident.id).to.match(/^INC-/));",
+              "pm.collectionVariables.set(\"lastIncidentId\", result.incident.id);"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

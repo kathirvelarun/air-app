@@ -1,0 +1,21 @@
+{
+  "eventId": "grafana-disk-prod-001",
+  "source": "Grafana",
+  "service": "ledger-service",
+  "environment": "production",
+  "rule": "ledger-disk-usage",
+  "severity": "CRITICAL",
+  "summary": "Ledger writes failing",
+  "description": "Grafana disk usage alert: ledger filesystem utilization exceeded the demo threshold.",
+  "observedAt": "2026-08-29T14:20:00Z",
+  "owner": "SRE on-call",
+  "repository": "org/air-services",
+  "requiredMetrics": [
+    "cpu_pct",
+    "memory_pct",
+    "http_5xx_rate",
+    "p95_latency_ms",
+    "disk_usage_pct"
+  ],
+  "simulated": true
+}

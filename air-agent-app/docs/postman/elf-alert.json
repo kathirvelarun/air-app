@@ -1,0 +1,15 @@
+{
+  "eventId": "elf-payment-prod-001",
+  "source": "ELF",
+  "service": "payment-service",
+  "environment": "production",
+  "rule": "payment-error-rate",
+  "severity": "HIGH",
+  "summary": "Payment errors spiking",
+  "description": "ELF detected repeated payment request errors above the demo threshold.",
+  "observedAt": "2026-08-29T14:20:00Z",
+  "owner": "SRE on-call",
+  "repository": "org/air-services",
+  "requiredMetrics": [],
+  "simulated": true
+}

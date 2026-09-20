@@ -7,6 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
 from air_agent_app.agent.logging_config import configure_logging, get_logger
+from air_agent_app.api.alert_intake import router as alert_router
 from air_agent_app.api.error_handlers import (
     configuration_error_handler,
     rca_execution_error_handler,
@@ -26,7 +27,7 @@ logger = get_logger(__name__)
 # this API at http://127.0.0.1:8000 directly, not through a dev proxy).
 # Browsers treat "localhost" and "127.0.0.1" as different origins, so both
 # host forms are listed.
-_DEFAULT_ALLOWED_ORIGINS = ("http://localhost:5173", "http://127.0.0.1:5173")
+_DEFAULT_ALLOWED_ORIGINS = ("http://localhost:5175", "http://127.0.0.1:5175")
 
 
 def _allowed_origins() -> list[str]:
@@ -52,6 +53,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.include_router(alert_router)
     app.include_router(planning_router)
     app.include_router(evidence_router)
     app.include_router(investigate_router)

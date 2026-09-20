@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 
 from air_agent_app.api.app import create_app
 
-UI_ORIGIN = "http://localhost:5173"
+UI_ORIGIN = "http://localhost:5175"
 
 
 def test_preflight_for_incidents_investigate_is_allowed() -> None:

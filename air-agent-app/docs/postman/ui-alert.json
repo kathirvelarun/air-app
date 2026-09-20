@@ -1,0 +1,15 @@
+{
+  "eventId": "ui-checkout-prod-001",
+  "source": "UI",
+  "service": "web-ui",
+  "environment": "production",
+  "rule": "checkout-response-parse",
+  "severity": "HIGH",
+  "summary": "Checkout page failing to load order details",
+  "description": "Front-end response parsing errors prevent checkout from rendering order details.",
+  "observedAt": "2026-08-29T14:20:00Z",
+  "owner": "SRE on-call",
+  "repository": "org/air-services",
+  "requiredMetrics": [],
+  "simulated": true
+}

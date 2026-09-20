@@ -52,7 +52,7 @@ POST incidents to `/api/v1/planning` or open http://127.0.0.1:8000/docs.
 A sample request body is at `docs/requests/section_01_planning_incident.json`.
 
 CORS is enabled for `air-ui-app`'s local Vite dev server
-(`http://localhost:5173` and `http://127.0.0.1:5173` by default - browsers
+(`http://localhost:5175` and `http://127.0.0.1:5175` by default - browsers
 treat the two host forms as different origins). For any other UI origin
 (a different dev port, or a deployed UI), set `AIR_UI_ORIGINS` to a
 comma-separated list before starting the server, e.g.
@@ -254,3 +254,17 @@ ruff format --check src tests
 
 Use `air-agent-app` for the project name and `air_agent_app` for Python imports.
 Logs go to stderr and must not contain credentials, prompts, or incident payloads.
+
+## Alert intake and Slack-style channel specifications
+
+- [Extension 05 — Agent Alert Intake API](docs/extension_05_alert_intake_api.md)
+- [Extension 06 — Slack-Style Channel and AIR UI Integration](docs/extension_06_slack_ui_integration.md)
+- [Postman collection and test instructions](docs/postman/README.md)
+
+## Current specifications (revision 2)
+
+- [Agent Alert API](docs/extension_07_alert_api_current.md)
+- [Slack integration and AIR UI](docs/extension_08_slack_integration_ui.md)
+
+These supersede Extensions 05 and 06 and include production scenarios,
+new-tab navigation, cross-tab status, and expanded investigation summaries.
